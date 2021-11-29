@@ -1,0 +1,19 @@
+server: irc.libera.chat:+6697
+password: thermite:hunter2
+channel: "##thermite"
+
+database:
+  user: jess
+  name: thermite
+  # optional
+  #pass: hunter5
+  # optional
+  #host: 127.0.0.1
+
+pipe-name: "##thermite-????????"
+make-pipe:
+  - 'MODE {CHANNEL} +PisI-c *!*@{HOSTNAME}'
+  - 'PRIVMSG chanserv :register {CHANNEL}'
+  - 'PRIVMSG chanserv :flags $chan *!*@{HOSTNAME} +V'
+
+  
