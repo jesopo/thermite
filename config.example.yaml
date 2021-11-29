@@ -12,8 +12,8 @@ database:
 
 pipe-name: "##thermite-????????"
 make-pipe:
-  - 'MODE {CHANNEL} +PisI-c *!*@{HOSTNAME}'
-  - 'PRIVMSG chanserv :register {CHANNEL}'
-  - 'PRIVMSG chanserv :flags $chan *!*@{HOSTNAME} +V'
+  - 'MODE {TARGET} +PisI-c *!*@{HOSTNAME}'
+  - 'PRIVMSG chanserv :register {TARGET}'
+  - 'PRIVMSG chanserv :flags {TARGET} *!*@{HOSTNAME} +V'
 
   

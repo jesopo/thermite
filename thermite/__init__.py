@@ -216,7 +216,7 @@ class Server(BaseServer):
             await self.send(build("JOIN", [target]))
             for pipe_line in self._config.make_pipe:
                 await self.send_raw(
-                    pipe_line.format(CHANNEL=target, HOSTNAME=self.hostname)
+                    pipe_line.format(TARGET=target, HOSTNAME=self.hostname)
                 )
             await self.send(build("JOIN", [source]))
 
