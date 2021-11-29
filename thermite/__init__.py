@@ -221,7 +221,7 @@ class Server(BaseServer):
             await self.send(build("JOIN", [source]))
 
             await self._database.add_pipe(source, target, args[1])
-            return []
+            return [f"piped {source} to {target}"]
 
     def line_preread(self, line: Line):
         print(f"< {line.format()}")
