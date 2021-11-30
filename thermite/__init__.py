@@ -205,7 +205,7 @@ class Server(BaseServer):
         )
         return line.command == RPL_CREATIONTIME
 
-    async def cmd_pipe(self, nick: str, sargs: str) -> Sequence[str]:
+    async def cmd_pipe(self, channel: str, sargs: str) -> Sequence[str]:
         args = sargs.split(None, 1)
         if len(args) < 2:
             return ["please provide target channel and reason"]
