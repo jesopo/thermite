@@ -228,6 +228,21 @@ class Server(BaseServer):
             self._target_map[target] = source
             return [f"piped {source} to {target}"]
 
+    async def cmd_unpipe(self, channel: str, sargs: str) -> Sequence[str]:
+        args = sargs.split(None, 1)
+        if not channel in self._target_map:
+            return ["this isn't a pipe target channel"]
+        else:
+            target = channel
+            source = self._target_map.pop(target)
+            del self._source_map[source]
+            await self._database.remove_pipe(source)
+            await self.send(build("PART", [target]))
+            await self._send_log(
+                f"unpiped {source}. part it and destroy {target} manually"
+            )
+            return []
+
     def line_preread(self, line: Line):
         print(f"< {line.format()}")
 

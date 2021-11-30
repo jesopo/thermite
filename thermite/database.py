@@ -22,6 +22,14 @@ class Database(object):
         async with self._pool.acquire() as conn:
             await conn.execute(query, source, target, reason)
 
+    async def remove_pipe(self, source: str):
+        query = """
+            DELETE FROM pipe
+            WHERE source = $1
+        """
+        async with self._pool.acquire() as conn:
+            await conn.execute(query, source)
+
     async def get_pipes(self) -> Sequence[Tuple[str, str]]:
         query = "SELECT source, target FROM pipe"
         async with self._pool.acquire() as conn:
