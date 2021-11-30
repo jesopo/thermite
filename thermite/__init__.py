@@ -37,6 +37,9 @@ class Server(BaseServer):
         # turn off throttling
         pass
 
+    async def _send_log(self, out: str):
+        await self.send(build("NOTICE", [self._config.channel, out]))
+
     async def _send_source_log(self, source: str, out: str):
         target = self._source_map[source]
         target_users = {
