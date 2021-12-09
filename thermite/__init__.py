@@ -129,6 +129,13 @@ class Server(BaseServer):
 
             await self._send_source_log(source, f"{who_str} {message}")
 
+        elif line.command == "MODE" and line.params[0] in self._source_map:
+            source = line.params[0]
+            args = " ".join(line.params[2:])
+            await self._send_source_log(
+                source, f"- {line.source} set mode {line.params[1]} {args}"
+            )
+
         elif line.command in {"JOIN", "PART"} and line.params[0] in self._source_map:
             source = line.params[0]
             await self._send_source_log(
