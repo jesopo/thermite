@@ -113,17 +113,25 @@ class Server(BaseServer):
             and line.params[0] in self._source_map
         ):
             source = line.params[0]
+            cuser = self.channels[self.casefold(source)].users[
+                self.casefold(line.hostmask.nickname)
+            ]
+
+            status = ""
+            for mode in cuser.modes:
+                status += self.isupport.prefix.from_mode(mode) or ""
+
             message = line.params[1]
             if line.command == "NOTICE":
-                who_str = f"-{line.hostmask.nickname}-"
+                who_str = f"-{status}{line.hostmask.nickname}-"
             elif not message.startswith("\x01"):
-                who_str = f"<{line.hostmask.nickname}>"
+                who_str = f"<{status}{line.hostmask.nickname}>"
             elif message.startswith("\x01ACTION "):
                 # /me
-                who_str = f"* {line.hostmask.nickname}"
+                who_str = f"* {status}{line.hostmask.nickname}"
                 message = message.strip("\x01").split(" ", 1)[1]
             else:
-                who_str = f"- {line.hostmask.nickname}"
+                who_str = f"- {status}{line.hostmask.nickname}"
                 message = message.strip("\x01")
                 message = f"CTCP {message}"
 
