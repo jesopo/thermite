@@ -54,7 +54,11 @@ class Server(BaseServer):
                 target_users.remove(target_user)
 
         if target_users:
-            await self.send(build("NOTICE", [target, out]))
+            offset = len(f":{self.hostmask()} NOTICE {target} :")
+            while out:
+                out_take = out[:510-offset]
+                out = out[len(out_take):]
+                await self.send(build("NOTICE", [target, out_take]))
         else:
             if not source in self._source_log:
                 self._source_log[source] = deque()
