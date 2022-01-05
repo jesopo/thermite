@@ -262,6 +262,12 @@ class Server(BaseServer):
             )
             return []
 
+    async def cmd_pipes(self, channel: str, sargs: str) -> Sequence[str]:
+        pipes = await self._database.get_pipes()
+        pipes.sort()
+        colmax = max([len(s) for s, t in pipes] or [0])
+        return [f"{s.rjust(colmax)} -> {t}" for s, t in pipes] or ["no pipes"]
+
     def line_preread(self, line: Line):
         print(f"< {line.format()}")
 
