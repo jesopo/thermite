@@ -56,8 +56,8 @@ class Server(BaseServer):
         if target_users:
             offset = len(f":{self.hostmask()} NOTICE {target} :")
             while out:
-                out_take = out[:510-offset]
-                out = out[len(out_take):]
+                out_take = out[: 510 - offset]
+                out = out[len(out_take) :]
                 await self.send(build("NOTICE", [target, out_take]))
         else:
             if not source in self._source_log:
