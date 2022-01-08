@@ -217,6 +217,19 @@ class Server(BaseServer):
             names = self.channels[self.casefold(source)].users.keys()
             return [self.users[n].hostmask() for n in names]
 
+    async def cmd_backlog(self, channel: str, sargs: str) -> Sequence[str]:
+        if not channel in self._target_map:
+            return ["this isn't a pipe target channel"]
+        else:
+            source = self._target_map[channel]
+            i = 0
+            if source in self._backlog:
+                for out in self._backlog[source]:
+                    i += 1
+                    await self._log_backlog(channel, out)
+
+            return [f"replayed {i} lines"]
+
     def _new_pipe_target(self):
         target = self._config.pipe_name
         while "?" in target:
