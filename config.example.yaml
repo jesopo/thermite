@@ -1,12 +1,14 @@
-server: irc.libera.chat:+6697
-password: thermite:hunter2
+server-read: irc.libera.chat:+6697
+password-read: thermite:hunter2
+server-write: irc.libera.chat:+6697
+password-write: thermite:hunter3
 channel: "##thermite"
 
 database:
   user: jess
   name: thermite
   # optional
-  #pass: hunter5
+  #pass: hunter4
   # optional
   #host: 127.0.0.1
 

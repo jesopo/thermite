@@ -16,16 +16,16 @@ async def main(config: Config):
         ),
     )
 
-    write_params = ConnectionParams.from_hoststring(config.nickname, config.server)
+    write_params = ConnectionParams.from_hoststring(config.nickname, config.server_write)
+    write_params.password = config.password_write
     write_params.autojoin = [config.channel]
     # this one goes to znc so nickname doesn't matter
-    read_params = ConnectionParams.from_hoststring("thermite", config.server)
-    read_params.password = config.password
+    read_params = ConnectionParams.from_hoststring("thermite", config.server_read)
+    read_params.password = config.password_read
 
     await bot.add_server("write", write_params)
     await bot.add_server("read", read_params)
     await bot.run()
-
 
 if __name__ == "__main__":
     parser = ArgumentParser()
