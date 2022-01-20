@@ -6,6 +6,7 @@ class Database(object):
     def __init__(self, pool: asyncpg.Pool):
         self._pool = pool
 
+    @staticmethod
     async def connect(
         username: str, password: Optional[str], hostname: Optional[str], db_name: str
     ):
