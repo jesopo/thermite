@@ -38,5 +38,5 @@ def load(filepath: str):
         config_yaml["database"].get("host", None),
         config_yaml["database"]["name"],
         config_yaml["pipe-name"],
-        config_yaml["make-pipe"]
+        config_yaml["make-pipe"],
     )
