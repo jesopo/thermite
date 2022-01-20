@@ -9,5 +9,5 @@ CREATE TABLE pipe (
     source  VARCHAR(50)   NOT NULL,
     target  VARCHAR(50)   NOT NULL,
     reason  VARCHAR(260)  NOT NULL,
-    ts      TIMESTAMP     NOT NULL,
+    ts      TIMESTAMP     NOT NULL
 );
