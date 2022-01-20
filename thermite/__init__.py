@@ -110,16 +110,6 @@ class WriteServer(BaseServer):
             for out in outs:
                 await self.send(build("NOTICE", [channel, out]))
 
-    async def cmd_say(self, channel: str, sargs: str) -> Sequence[str]:
-        if not sargs.strip():
-            return ["please provide a message to send"]
-        elif not channel in self.channel_map:
-            return ["this isn't a pipe target channel"]
-        else:
-            source = self.channel_map[channel]
-            await self.send(build("PRIVMSG", [source, sargs]))
-            return []
-
     async def cmd_names(self, channel: str, sargs: str) -> Sequence[str]:
         if not channel in self.channel_map:
             return ["this isn't a pipe target channel"]
