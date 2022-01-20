@@ -7,6 +7,7 @@ import yaml
 @dataclass
 class Config(object):
     server: str
+    nickname: str
     password: str
     channel: str
 
@@ -25,7 +26,8 @@ def load(filepath: str):
 
     return Config(
         config_yaml["server"],
-        config_yaml["password"],
+        config_yaml["nickname"],
+        config_yaml.get("password"),
         config_yaml["channel"],
         config_yaml["database"]["user"],
         config_yaml["database"].get("pass", None),

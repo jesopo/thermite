@@ -16,11 +16,14 @@ async def main(config: Config):
         ),
     )
 
-    params = ConnectionParams.from_hoststring("thermite", config.server)
-    params.password = config.password
-    params.autojoin = [config.channel]
+    write_params = ConnectionParams.from_hoststring(config.nickname, config.server)
+    write_params.autojoin = [config.channel]
+    # this one goes to znc so nickname doesn't matter
+    read_params = ConnectionParams.from_hoststring("thermite", config.server)
+    read_params.password = config.password
 
-    await bot.add_server("irc", params)
+    await bot.add_server("write", write_params)
+    await bot.add_server("read", read_params)
     await bot.run()
 
 
