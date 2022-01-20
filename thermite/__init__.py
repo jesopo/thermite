@@ -35,8 +35,10 @@ class WriteServer(BaseServer):
     def set_throttle(self, rate: int, time: float):
         # turn off throttling
         pass
+
     def line_preread(self, line: Line):
         print(f"w< {line.format()}")
+
     def line_presend(self, line: Line):
         print(f"w> {line.format()}")
 
@@ -215,8 +217,10 @@ class ReadServer(BaseServer):
     def set_throttle(self, rate: int, time: float):
         # turn off throttling
         pass
+
     def line_preread(self, line: Line):
         print(f"r< {line.format()}")
+
     def line_presend(self, line: Line):
         print(f"r> {line.format()}")
 
