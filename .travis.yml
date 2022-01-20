@@ -8,5 +8,5 @@ install:
 before-script:
   - pip3 freeze
 script:
-  - mypy thermite
+  - mypy thermite --ignore-missing-imports
   - python3 -m black thermite --check
