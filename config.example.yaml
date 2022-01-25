@@ -3,6 +3,7 @@ password-read: thermite:hunter2
 server-write: irc.libera.chat:+6697
 password-write: thermite:hunter3
 channel: "##thermite"
+pinned-cert: abc123
 
 database:
   user: jess

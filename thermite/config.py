@@ -20,6 +20,7 @@ class Config(object):
 
     pipe_name: str
     make_pipe: str
+    pinned_cert: Optional[str]
 
 
 def load(filepath: str):
@@ -39,4 +40,5 @@ def load(filepath: str):
         config_yaml["database"]["name"],
         config_yaml["pipe-name"],
         config_yaml["make-pipe"],
+        config_yaml.get("pinned-cert", None),
     )
