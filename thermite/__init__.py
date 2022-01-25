@@ -55,7 +55,10 @@ class WriteServer(BaseServer):
         return users
 
     async def print_backlog(self, target: str, out: str):
-        if not self.casefold(target) in self.channels or len(self._human_users(target)) == 0:
+        if (
+            not self.casefold(target) in self.channels
+            or len(self._human_users(target)) == 0
+        ):
             return
 
         offset = len(f":{self.hostmask()} NOTICE {target} :")
@@ -297,10 +300,7 @@ class ReadServer(BaseServer):
         elif (
             line.command == "NICK"
             and (fold := self.casefold(line.hostmask.nickname)) in last_users
-            and (
-                common := set(self.channel_map)
-                & last_users[fold].channels
-            )
+            and (common := set(self.channel_map) & last_users[fold].channels)
         ):
             message = f"- {line.source} changed nick to {line.params[0]}"
             for chan in common:
