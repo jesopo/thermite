@@ -294,9 +294,13 @@ class ReadServer(BaseServer):
                 f"- {line.source} {line.command.lower()}ed {source}",
             )
 
-        elif line.command == "NICK" and (
-            common := set(self.channel_map)
-            & self.users[line.hostmask.nickname].channels
+        elif (
+            line.command == "NICK"
+            and (fold := self.casefold(line.hostmask.nickname)) in last_users
+            and (
+                common := set(self.channel_map)
+                & last_users[fold].channels
+            )
         ):
             message = f"- {line.source} changed nick to {line.params[0]}"
             for chan in common:
