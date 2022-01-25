@@ -55,6 +55,9 @@ class WriteServer(BaseServer):
         return users
 
     async def print_backlog(self, target: str, out: str):
+        if not self.casefold(target) in self.channels or len(self._human_users(target)) == 0:
+            return
+
         offset = len(f":{self.hostmask()} NOTICE {target} :")
         while out:
             out_take = out[: 510 - offset]
