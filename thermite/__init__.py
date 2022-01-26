@@ -21,7 +21,7 @@ CAP_OPER = Capability(None, "solanum.chat/oper")
 BACKLOG_MAX = 64
 BACKLOG: Dict[str, Deque[str]] = {}
 
-
+# log relaying head
 class WriteServer(BaseServer):
     def __init__(self, bot: BaseBot, name: str, config: Config, database: Database):
         super().__init__(bot, name)
@@ -30,7 +30,10 @@ class WriteServer(BaseServer):
         self._config = config
         self._database = database
 
-        self.channel_map: Dict[str, str] = {}
+        # map logged channel to log output channel
+        self._source_map: Dict[str, str] = {}
+        # visa versa
+        self._target_map: Dict[str, str] = {}
 
     def set_throttle(self, rate: int, time: float):
         # turn off throttling
@@ -54,9 +57,13 @@ class WriteServer(BaseServer):
                 users.remove(user)
         return users
 
-    async def print_backlog(self, target: str, out: str):
+    async def print_backlog(self, source: str, out: str):
         if (
-            not self.casefold(target) in self.channels
+            # we don't know about logged channel (yet?)
+            not source in self._source_map
+            # we're not joined to this logged channel's log output channel (yet?)
+            or not self.casefold(target := self._source_map[source]) in self.channels
+            # there's no one to hear us anyway
             or len(self._human_users(target)) == 0
         ):
             return
@@ -70,14 +77,18 @@ class WriteServer(BaseServer):
     async def line_read(self, line: Line):
         if line.command == RPL_WELCOME:
             for source, target in await self._database.get_pipes():
-                self.channel_map[target] = source
+                self._source_map[source] = target
+                self._target_map[target] = source
+                # we *only* want to join `target` here.
+                # `source` is the logged channel (for the read head)
+                # `target` is the log output channel
                 await self.send(build("JOIN", [target]))
         elif (
             line.command == "PRIVMSG"
             and line.source is not None
             and not self.is_me(line.hostmask.nickname)
             and (
-                line.params[0] in self.channel_map
+                line.params[0] in self._target_map
                 or line.params[0] == self._config.channel
             )
         ):
@@ -94,11 +105,11 @@ class WriteServer(BaseServer):
 
         elif (
             line.command == "JOIN"
-            and (target := line.params[0]) in self.channel_map
-            and (source := self.channel_map[target]) in BACKLOG
+            and (target := line.params[0]) in self._target_map
+            and (source := self._target_map[target]) in BACKLOG
             and len(self._human_users(line.params[0])) == 1
         ):
-            # target channel was empty until this join and we have a backlog.
+            # log output channel was empty until this join and we have a backlog.
             # replay it for the joining user
             for out in BACKLOG[source]:
                 await self.print_backlog(target, out)
@@ -117,18 +128,18 @@ class WriteServer(BaseServer):
                 await self.send(build("NOTICE", [channel, out]))
 
     async def cmd_names(self, channel: str, sargs: str) -> Sequence[str]:
-        if not channel in self.channel_map:
+        if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
         else:
-            source = self.channel_map[channel]
+            source = self._target_map[channel]
             names = self.channels[self.casefold(source)].users.keys()
             return [self.users[n].hostmask() for n in names]
 
     async def cmd_backlog(self, channel: str, sargs: str) -> Sequence[str]:
-        if not channel in self.channel_map:
+        if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
         else:
-            source = self.channel_map[channel]
+            source = self._target_map[channel]
             i = 0
             if source in BACKLOG:
                 for out in BACKLOG[source]:
@@ -178,19 +189,24 @@ class WriteServer(BaseServer):
 
             await self._database.add_pipe(source, target, args[1])
             read_server.channel_map[source] = target
-            self.channel_map[target] = source
+
+            self._source_map[source] = target
+            self._target_map[target] = source
+
             return [f"piped {source} to {target}"]
 
     async def cmd_unpipe(self, channel: str, sargs: str) -> Sequence[str]:
         args = sargs.split(None, 1)
-        if not channel in self.channel_map:
+        if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
         else:
             target = channel
-            source = self.channel_map.pop(target)
+            source = self._target_map.pop(target)
+            del self._source_map[source]
+
             await self._database.remove_pipe(source)
             await self.send(build("PART", [target]))
-            return [f"unpiped {source}. part and destroy {target} manually"]
+            return [f"unpiped {source}. please destroy {target} manually"]
 
     async def cmd_pipes(self, channel: str, sargs: str) -> Sequence[str]:
         pipes = list(await self._database.get_pipes())
@@ -199,6 +215,7 @@ class WriteServer(BaseServer):
         return [f"{s.rjust(colmax)} -> {t}" for s, t in pipes] or ["no pipes"]
 
 
+# channel activity reading head
 class ReadServer(BaseServer):
     def __init__(self, bot: BaseBot, name: str, config: Config, database: Database):
 
@@ -221,11 +238,13 @@ class ReadServer(BaseServer):
         print(f"r> {line.format()}")
 
     async def _print_backlog(self, source: str, out: str):
+        # is the write head currently connected?
         if (
             write_server := cast(BaseBot, self.bot).servers.get("write", None)
         ) is not None:
-            target = self.channel_map[source]
-            await cast(WriteServer, write_server).print_backlog(target, out)
+            # yes. let's print this line to the log output channel for this logged
+            # channel
+            await cast(WriteServer, write_server).print_backlog(source, out)
 
     async def _add_backlog(self, source: str, out: str):
         if not source in BACKLOG:
@@ -234,8 +253,11 @@ class ReadServer(BaseServer):
         backlog = BACKLOG[source]
         backlog.append(out)
         if len(backlog) > BACKLOG_MAX:
+            # max backlog reached, oldest is leftmost
             backlog.popleft()
 
+        # while we're adding this to the backlog, see if we can print this line to
+        # the log output channel for this logged channel
         await self._print_backlog(source, out)
 
     async def line_read(self, line: Line):
@@ -269,14 +291,17 @@ class ReadServer(BaseServer):
 
             message = line.params[1]
             if line.command == "NOTICE":
+                # notice
                 who_str = f"-{status}{line.hostmask.nickname}-"
             elif not message.startswith("\x01"):
+                # privmsg
                 who_str = f"<{status}{line.hostmask.nickname}>"
             elif message.startswith("\x01ACTION "):
                 # /me
                 who_str = f"* {status}{line.hostmask.nickname}"
                 message = message.strip("\x01").split(" ", 1)[1]
             else:
+                # ctcp
                 who_str = f"- {status}{line.hostmask.nickname}"
                 message = message.strip("\x01")
                 message = f"CTCP {message}"
