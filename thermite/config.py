@@ -23,7 +23,7 @@ class Config(object):
     pinned_cert: Optional[str]
 
 
-def load(filepath: str):
+def load(filepath: str) -> Config:
     with open(filepath) as file:
         config_yaml = yaml.safe_load(file.read())
 

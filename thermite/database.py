@@ -9,13 +9,13 @@ class Database(object):
     @staticmethod
     async def connect(
         username: str, password: Optional[str], hostname: Optional[str], db_name: str
-    ):
+    ) -> "Database":
         pool = await asyncpg.create_pool(
             user=username, password=password, host=hostname, database=db_name
         )
         return Database(pool)
 
-    async def add_pipe(self, source: str, target: str, reason: str):
+    async def add_pipe(self, source: str, target: str, reason: str) -> None:
         query = """
             INSERT INTO pipe (source, target, reason, ts)
             VALUES ($1, $2, $3, NOW()::TIMESTAMP)
@@ -23,7 +23,7 @@ class Database(object):
         async with self._pool.acquire() as conn:
             await conn.execute(query, source, target, reason)
 
-    async def remove_pipe(self, source: str):
+    async def remove_pipe(self, source: str) -> None:
         query = """
             DELETE FROM pipe
             WHERE source = $1

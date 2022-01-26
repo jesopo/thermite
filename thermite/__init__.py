@@ -35,14 +35,14 @@ class WriteServer(BaseServer):
         # visa versa
         self._target_map: Dict[str, str] = {}
 
-    def set_throttle(self, rate: int, time: float):
+    def set_throttle(self, rate: int, time: float) -> None:
         # turn off throttling
         pass
 
-    def line_preread(self, line: Line):
+    def line_preread(self, line: Line) -> None:
         print(f"w< {line.format()}")
 
-    def line_presend(self, line: Line):
+    def line_presend(self, line: Line) -> None:
         print(f"w> {line.format()}")
 
     def _human_users(self, channel: str) -> Set[User]:
@@ -57,7 +57,7 @@ class WriteServer(BaseServer):
                 users.remove(user)
         return users
 
-    async def print_backlog(self, source: str, out: str):
+    async def print_backlog(self, source: str, out: str) -> None:
         if (
             # we don't know about logged channel (yet?)
             not source in self._source_map
@@ -74,7 +74,7 @@ class WriteServer(BaseServer):
             out = out[len(out_take) :]
             await self.send(build("NOTICE", [target, out_take]))
 
-    async def line_read(self, line: Line):
+    async def line_read(self, line: Line) -> None:
         if line.command == RPL_WELCOME:
             for source, target in await self._database.get_pipes():
                 self._source_map[source] = target
@@ -119,7 +119,7 @@ class WriteServer(BaseServer):
         channel: str,
         command: str,
         args: str,
-    ):
+    ) -> None:
 
         attrib = f"cmd_{command}"
         if hasattr(self, attrib):
@@ -148,13 +148,13 @@ class WriteServer(BaseServer):
 
             return [f"replayed {i} lines"]
 
-    def _new_pipe_target(self):
+    def _new_pipe_target(self) -> str:
         target = self._config.pipe_name
         while "?" in target:
             target = target.replace("?", random_choice(hexdigits), 1)
         return target
 
-    async def _channel_exists(self, channel: str):
+    async def _channel_exists(self, channel: str) -> bool:
         await self.send(build("MODE", [channel]))
         line = await self.wait_for(
             {
@@ -227,17 +227,17 @@ class ReadServer(BaseServer):
         self.channel_map: Dict[str, str] = {}
         self._last_users = self.users.copy()
 
-    def set_throttle(self, rate: int, time: float):
+    def set_throttle(self, rate: int, time: float) -> None:
         # turn off throttling
         pass
 
-    def line_preread(self, line: Line):
+    def line_preread(self, line: Line) -> None:
         print(f"r< {line.format()}")
 
-    def line_presend(self, line: Line):
+    def line_presend(self, line: Line) -> None:
         print(f"r> {line.format()}")
 
-    async def _print_backlog(self, source: str, out: str):
+    async def _print_backlog(self, source: str, out: str) -> None:
         # is the write head currently connected?
         if (
             write_server := cast(BaseBot, self.bot).servers.get("write", None)
@@ -246,7 +246,7 @@ class ReadServer(BaseServer):
             # channel
             await cast(WriteServer, write_server).print_backlog(source, out)
 
-    async def _add_backlog(self, source: str, out: str):
+    async def _add_backlog(self, source: str, out: str) -> None:
         if not source in BACKLOG:
             BACKLOG[source] = deque()
 
@@ -260,7 +260,7 @@ class ReadServer(BaseServer):
         # the log output channel for this logged channel
         await self._print_backlog(source, out)
 
-    async def line_read(self, line: Line):
+    async def line_read(self, line: Line) -> None:
         now = time.monotonic()
 
         # if we're handling a QUIT, the user will be gone from self.users
@@ -352,7 +352,7 @@ class Bot(BaseBot):
         self._config = config
         self._database = database
 
-    def create_server(self, name: str):
+    def create_server(self, name: str) -> BaseServer:
         if name == "write":
             return WriteServer(self, name, self._config, self._database)
         else:
