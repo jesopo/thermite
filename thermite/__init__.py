@@ -1,17 +1,18 @@
-import time
+# pyright: strict, reportPrivateImportUsage=false
+from __future__ import annotations
+
 from collections import deque
 from random import choice as random_choice
 from string import hexdigits
-from typing import cast, Deque, Dict, Sequence, Set
+from typing import Deque, Dict, Literal, Sequence, Set, cast
 
-from irctokens import build, Line
-from ircstates import User
 from ircrobots import Bot as BaseBot
 from ircrobots import Server as BaseServer
-
-from ircstates.numerics import RPL_WELCOME, RPL_CREATIONTIME, ERR_NOSUCHCHANNEL
 from ircrobots.ircv3 import Capability
-from ircrobots.matching import Folded, Response, SELF
+from ircrobots.matching import SELF, Folded, Response
+from ircstates import User
+from ircstates.numerics import ERR_NOSUCHCHANNEL, RPL_CREATIONTIME, RPL_WELCOME
+from irctokens import Line, build
 
 from .config import Config
 from .database import Database
@@ -29,6 +30,8 @@ class WriteServer(BaseServer):
 
         self._config = config
         self._database = database
+
+        self.bot: BaseBot
 
         # map logged channel to log output channel
         self._source_map: Dict[str, str] = {}
@@ -55,6 +58,7 @@ class WriteServer(BaseServer):
                 or user.nickname == self.nickname
             ):
                 users.remove(user)
+
         return users
 
     async def print_backlog(self, source: str, out: str) -> None:
@@ -69,6 +73,7 @@ class WriteServer(BaseServer):
             return
 
         offset = len(f":{self.hostmask()} NOTICE {target} :")
+
         while out:
             out_take = out[: 510 - offset]
             out = out[len(out_take) :]
@@ -83,6 +88,7 @@ class WriteServer(BaseServer):
                 # `source` is the logged channel (for the read head)
                 # `target` is the log output channel
                 await self.send(build("JOIN", [target]))
+
         elif (
             line.command == "PRIVMSG"
             and line.source is not None
@@ -95,7 +101,6 @@ class WriteServer(BaseServer):
             # commands
 
             me = self.nickname
-            who = line.hostmask.nickname
 
             first, _, rest = line.params[1].partition(" ")
             if first in [me, f"{me}:", f"{me},"] and rest:
@@ -130,6 +135,7 @@ class WriteServer(BaseServer):
     async def cmd_names(self, channel: str, sargs: str) -> Sequence[str]:
         if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
+
         else:
             source = self._target_map[channel]
             names = self.channels[self.casefold(source)].users.keys()
@@ -138,6 +144,7 @@ class WriteServer(BaseServer):
     async def cmd_backlog(self, channel: str, sargs: str) -> Sequence[str]:
         if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
+
         else:
             source = self._target_map[channel]
             i = 0
@@ -150,9 +157,11 @@ class WriteServer(BaseServer):
 
     def _new_pipe_target(self) -> str:
         target = self._config.pipe_name
-        while "?" in target:
-            target = target.replace("?", random_choice(hexdigits), 1)
-        return target
+        out = ""
+        for c in target:
+            out += c if c != "?" else random_choice(hexdigits)
+
+        return out
 
     async def _channel_exists(self, channel: str) -> bool:
         await self.send(build("MODE", [channel]))
@@ -160,22 +169,24 @@ class WriteServer(BaseServer):
             {
                 Response(RPL_CREATIONTIME, [SELF, Folded(channel)]),
                 Response(ERR_NOSUCHCHANNEL, [SELF, Folded(channel)]),
-            }
+            },
         )
-        return line.command == RPL_CREATIONTIME
+
+        return bool(line.command == RPL_CREATIONTIME)
 
     async def cmd_pipe(self, channel: str, sargs: str) -> Sequence[str]:
         args = sargs.split(None, 1)
         if len(args) < 2:
             return ["please provide target channel and reason"]
+
         elif not self.is_channel(source := args[0]):
             return [f"'{source}' isn't a valid channel name"]
-        elif (
-            read_server_ := cast(BaseBot, self.bot).servers.get("read", None)
-        ) is None:
+
+        elif (read_server_ := self.bot.servers.get("read", None)) is None:
             return ["read head not connected"]
+
         else:
-            read_server = cast(ReadServer, read_server_)
+            read_server: ReadServer = read_server_  # type:ignore
             # make sure our randomly generated pipe target isn't already in use
             while await self._channel_exists(target := self._new_pipe_target()):
                 pass
@@ -185,6 +196,7 @@ class WriteServer(BaseServer):
                 await self.send_raw(
                     pipe_line.format(TARGET=target, HOSTNAME=self.hostname)
                 )
+
             await read_server.send(build("JOIN", [source]))
 
             await self._database.add_pipe(source, target, args[1])
@@ -196,9 +208,9 @@ class WriteServer(BaseServer):
             return [f"piped {source} to {target}"]
 
     async def cmd_unpipe(self, channel: str, sargs: str) -> Sequence[str]:
-        args = sargs.split(None, 1)
         if not channel in self._target_map:
             return ["this isn't a pipe target channel"]
+
         else:
             target = channel
             source = self._target_map.pop(target)
@@ -211,7 +223,7 @@ class WriteServer(BaseServer):
     async def cmd_pipes(self, channel: str, sargs: str) -> Sequence[str]:
         pipes = list(await self._database.get_pipes())
         pipes.sort()
-        colmax = max([len(s) for s, t in pipes] or [0])
+        colmax = max([len(s) for s, _ in pipes] or [0])
         return [f"{s.rjust(colmax)} -> {t}" for s, t in pipes] or ["no pipes"]
 
 
@@ -220,6 +232,8 @@ class ReadServer(BaseServer):
     def __init__(self, bot: BaseBot, name: str, config: Config, database: Database):
 
         super().__init__(bot, name)
+
+        self.bot: BaseBot
 
         self._config = config
         self._database = database
@@ -239,9 +253,7 @@ class ReadServer(BaseServer):
 
     async def _print_backlog(self, source: str, out: str) -> None:
         # is the write head currently connected?
-        if (
-            write_server := cast(BaseBot, self.bot).servers.get("write", None)
-        ) is not None:
+        if (write_server := self.bot.servers.get("write", None)) is not None:
             # yes. let's print this line to the log output channel for this logged
             # channel
             await cast(WriteServer, write_server).print_backlog(source, out)
@@ -261,8 +273,6 @@ class ReadServer(BaseServer):
         await self._print_backlog(source, out)
 
     async def line_read(self, line: Line) -> None:
-        now = time.monotonic()
-
         # if we're handling a QUIT, the user will be gone from self.users
         # before we have a chance to accurately log it. hold on to self.users
         # manually so we can see what self.users was before the quit we're
@@ -290,16 +300,20 @@ class ReadServer(BaseServer):
                 status += self.isupport.prefix.from_mode(mode) or ""
 
             message = line.params[1]
+
             if line.command == "NOTICE":
                 # notice
                 who_str = f"-{status}{line.hostmask.nickname}-"
+
             elif not message.startswith("\x01"):
                 # privmsg
                 who_str = f"<{status}{line.hostmask.nickname}>"
+
             elif message.startswith("\x01ACTION "):
                 # /me
                 who_str = f"* {status}{line.hostmask.nickname}"
                 message = message.strip("\x01").split(" ", 1)[1]
+
             else:
                 # ctcp
                 who_str = f"- {status}{line.hostmask.nickname}"
@@ -342,18 +356,23 @@ class ReadServer(BaseServer):
             message = f"- {line.source} quit"
             if len(line.params) > 0:
                 message += f" ({line.params[0]})"
+
             for chan in sorted(common):
                 await self._add_backlog(chan, message)
 
 
 class Bot(BaseBot):
-    def __init__(self, config: Config, database: Database):
+    def __init__(self, config: Config, database: Database) -> None:
         super().__init__()
         self._config = config
         self._database = database
 
-    def create_server(self, name: str) -> BaseServer:
+    def create_server(self, name: Literal["write"] | Literal["read"]) -> BaseServer:
         if name == "write":
             return WriteServer(self, name, self._config, self._database)
-        else:
+
+        elif name == "read":
             return ReadServer(self, name, self._config, self._database)
+
+        else:
+            raise ValueError(f"Unknown server type {name!r}")
