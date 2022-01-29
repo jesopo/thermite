@@ -1,4 +1,3 @@
-import time
 from collections import deque
 from random import choice as random_choice
 from string import hexdigits
@@ -137,7 +136,7 @@ class WriteServer(BaseServer):
 
         source = self._target_map[channel]
         if not source in BACKLOG:
-            return [f"replayed 0 lines"]
+            return ["replayed 0 lines"]
 
         for out in BACKLOG[source]:
             await self.print_backlog(channel, out)
@@ -293,8 +292,6 @@ class ReadServer(BaseServer):
             await self._backlog_channel(channel_name, out)
 
     async def line_read(self, line: Line) -> None:
-        now = time.monotonic()
-
         if line.command == RPL_WELCOME:
             for source, target in await self._database.get_pipes():
                 self.channel_map[source] = target
