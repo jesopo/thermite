@@ -1,5 +1,5 @@
 import asyncpg
-from typing import Optional, Sequence, Tuple
+from typing import cast, Optional, Sequence, Tuple
 
 
 class Database(object):
@@ -34,4 +34,4 @@ class Database(object):
     async def get_pipes(self) -> Sequence[Tuple[str, str]]:
         query = "SELECT source, target FROM pipe"
         async with self._pool.acquire() as conn:
-            return await conn.fetch(query)
+            return cast(Sequence[Tuple[str, str]], await conn.fetch(query))
